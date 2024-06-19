@@ -1,0 +1,2 @@
+class DexClass:
+    pass

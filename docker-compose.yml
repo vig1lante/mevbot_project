@@ -1,0 +1,33 @@
+version: '2.1'
+services:
+  arbitrage-one-chain-bot:
+    build:
+      context: .
+      dockerfile: arbitrage_one_chain_bot/Dockerfile
+    volumes:
+      - ./logs/arbitrage_one_chain_bot:/app/logs/arbitrage_one_chain_bot
+    restart: always
+    env_file:
+      - .env
+    networks:
+      - mevbot_project_net
+  arbitrage-some-chains-bot:
+    build:
+      context: .
+      dockerfile: arbitrage_some_chains_bot/Dockerfile
+    volumes:
+      - ./logs/arbitrage_some_chains_bot:/app/logs/arbitrage_some_chains_bot
+    restart: always
+    env_file:
+      - .env
+    networks:
+      - mevbot_project_net
+networks:
+  mevbot_project_net:
+
+
+
+# sudo docker-compose build
+# sudo docker-compose up
+# sudo docker-compose down
+# sudo docker-compose rm -f $(sudo docker-compose ps -a -q)
