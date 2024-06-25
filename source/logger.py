@@ -5,6 +5,7 @@ from colorlog import ColoredFormatter
 from .constants import service_settings
 from datetime import datetime
 
+
 class TracebackInfoFilter(logging.Filter):
     def __init__(self, show_traceback=True):
         super().__init__()
@@ -15,6 +16,7 @@ class TracebackInfoFilter(logging.Filter):
             record.exc_info = None
             record.exc_text = None
         return True
+
 
 class Logger:
     console_format = ColoredFormatter(
@@ -61,7 +63,6 @@ class Logger:
         self._logger.addHandler(console_handler)
         self._logger.addHandler(file_handler)
 
-
     @property
     def logger(self):
         return self._logger
@@ -73,9 +74,17 @@ class Logger:
 
 today = datetime.today()
 arbitrage_one_chain_bot_logger = Logger("arbitrage_one_chain_bot",
-                                                 os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs", "arbitrage_one_chain_bot.log"),
-                                                 production_mode=service_settings.PRODUCTION_MODE).logger
+                                        os.path.join(
+                                            os.path.dirname(os.path.dirname(__file__)),
+                                            "logs",
+                                            "arbitrage_one_chain_bot.log"
+                                        ),
+                                        production_mode=service_settings.PRODUCTION_MODE).logger
 
 arbitrage_some_chains_bot_logger = Logger("arbitrage_some_chains_bot",
-                                                 os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs", "arbitrage_some_chains_bot.log"),
-                                                 production_mode=service_settings.PRODUCTION_MODE).logger
+                                          os.path.join(
+                                              os.path.dirname(os.path.dirname(__file__)),
+                                              "logs",
+                                              "arbitrage_some_chains_bot.log"
+                                          ),
+                                          production_mode=service_settings.PRODUCTION_MODE).logger
