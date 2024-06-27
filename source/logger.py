@@ -73,18 +73,20 @@ class Logger:
 
 
 today = datetime.today()
-arbitrage_one_chain_bot_logger = Logger("arbitrage_one_chain_bot",
-                                        os.path.join(
-                                            os.path.dirname(os.path.dirname(__file__)),
-                                            "logs",
-                                            "arbitrage_one_chain_bot.log"
-                                        ),
-                                        production_mode=service_settings.PRODUCTION_MODE).logger
+one_chain_bot_logger = Logger(
+    "one_chain",
+    os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "logs",
+        "one_chain.log"
+    ),
+    production_mode=service_settings.PRODUCTION_MODE).logger
 
-arbitrage_some_chains_bot_logger = Logger("arbitrage_some_chains_bot",
-                                          os.path.join(
-                                              os.path.dirname(os.path.dirname(__file__)),
-                                              "logs",
-                                              "arbitrage_some_chains_bot.log"
-                                          ),
-                                          production_mode=service_settings.PRODUCTION_MODE).logger
+multi_chain_bot_logger = Logger(
+    "multi_chain",
+    os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "logs",
+        "multi_chain.log"
+    ),
+    production_mode=service_settings.PRODUCTION_MODE).logger
