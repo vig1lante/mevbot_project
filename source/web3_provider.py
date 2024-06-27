@@ -1,6 +1,7 @@
 import asyncio
 from typing import Union, Type
 
+from eth_account.datastructures import SignedTransaction
 from hexbytes import HexBytes
 from web3 import Web3
 from web3.contract import Contract
@@ -103,7 +104,7 @@ class Web3Provider:
     ) -> HexBytes:
         return self.web3.eth.send_raw_transaction(signed_transaction)
 
-    async def sign_transaction(self, transaction: dict, private_key) -> dict:
+    async def sign_transaction(self, transaction: dict, private_key) -> SignedTransaction:
         return self.web3.eth.account.sign_transaction(transaction, private_key)
 
     async def estimate_gas(self, transaction: dict) -> int:
