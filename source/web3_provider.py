@@ -34,6 +34,7 @@ from eth_typing import (
     HexStr,
 )
 
+
 class Web3Provider:
     def __init__(self, node_url: str):
         self.node_url = node_url
@@ -42,13 +43,17 @@ class Web3Provider:
     async def is_address(self, address: Union[Address, ChecksumAddress, ENS]) -> bool:
         return self.web3.is_address(address)
 
-    async def is_checksum_address(self, address: Union[Address, ChecksumAddress, ENS]) -> bool:
+    async def is_checksum_address(
+        self, address: Union[Address, ChecksumAddress, ENS]
+    ) -> bool:
         try:
             return self.web3.is_checksum_address(address)
         except InvalidAddress:
             return False
 
-    async def to_checksum_address(self, address: Union[Address, ChecksumAddress, ENS]) -> ChecksumAddress:
+    async def to_checksum_address(
+        self, address: Union[Address, ChecksumAddress, ENS]
+    ) -> ChecksumAddress:
         try:
             return self.web3.to_checksum_address(address)
         except InvalidAddress as e:
@@ -74,22 +79,28 @@ class Web3Provider:
     async def get_block(self, block_identifier) -> BlockData:
         return self.web3.eth.get_block(block_identifier)
 
-    async def get_transaction(self, transaction_hash:  _Hash32) -> TxData:
+    async def get_transaction(self, transaction_hash: _Hash32) -> TxData:
         try:
             return self.web3.eth.get_transaction(transaction_hash)
         except TransactionNotFound:
             raise ValueError(f"Transaction not found: {transaction_hash}")
 
-    async def wait_for_transaction_receipt(self, transaction_hash:  _Hash32, timeout: int = 120) -> TxReceipt:
-        return self.web3.eth.wait_for_transaction_receipt(transaction_hash, timeout=timeout)
+    async def wait_for_transaction_receipt(
+        self, transaction_hash: _Hash32, timeout: int = 120
+    ) -> TxReceipt:
+        return self.web3.eth.wait_for_transaction_receipt(
+            transaction_hash, timeout=timeout
+        )
 
-    async def get_transaction_receipt(self, transaction_hash:  _Hash32) -> TxReceipt:
+    async def get_transaction_receipt(self, transaction_hash: _Hash32) -> TxReceipt:
         try:
             return self.web3.eth.get_transaction_receipt(transaction_hash)
         except TransactionNotFound:
             raise ValueError(f"Transaction receipt not found: {transaction_hash}")
 
-    async def send_raw_transaction(self, signed_transaction: Union[HexStr, bytes]) -> HexBytes:
+    async def send_raw_transaction(
+        self, signed_transaction: Union[HexStr, bytes]
+    ) -> HexBytes:
         return self.web3.eth.send_raw_transaction(signed_transaction)
 
     async def sign_transaction(self, transaction: dict, private_key) -> dict:
@@ -98,7 +109,9 @@ class Web3Provider:
     async def estimate_gas(self, transaction: dict) -> int:
         return self.web3.eth.estimate_gas(transaction)
 
-    async def contract(self, address: Union[Address, ChecksumAddress, ENS], abi: list) -> Union[Type[Contract], Contract]:
+    async def contract(
+        self, address: Union[Address, ChecksumAddress, ENS], abi: list
+    ) -> Union[Type[Contract], Contract]:
         if not await self.is_address(address):
             raise ValueError(f"Invalid address: {address}")
         return self.web3.eth.contract(address=address, abi=abi)
