@@ -1,6 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import Union, Type
+from typing import Union, Type, Optional, Any
 import aiohttp
 from eth_account.datastructures import SignedTransaction
 from hexbytes import HexBytes
@@ -116,11 +116,13 @@ class Web3Provider:
         return await self.web3.eth.estimate_gas(transaction)
 
     async def contract(
-        self, address: Union[Address, ChecksumAddress, ENS], abi: list
+        self,
+        address: Optional[Union[Address, ChecksumAddress, ENS]] = None,
+        **kwargs: Any,
     ) -> AsyncContract:
         if not await self.is_address(address):
             raise ValueError(f"Invalid address: {address}")
-        return self.web3.eth.contract(address=address, abi=abi)
+        return self.web3.eth.contract(address=address, **kwargs)
 
 
 # async def main():
