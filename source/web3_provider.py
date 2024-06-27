@@ -1,10 +1,11 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import Union, Type
-
+import aiohttp
 from eth_account.datastructures import SignedTransaction
 from hexbytes import HexBytes
-from web3 import Web3
-from web3.contract import Contract
+from web3 import AsyncWeb3, AsyncHTTPProvider
+from web3.contract import Contract, AsyncContract
 from web3.exceptions import InvalidAddress, TransactionNotFound
 from web3.types import (
     ENS,
@@ -27,7 +28,6 @@ from web3.types import (
     Wei,
     _Hash32,
 )
-
 from eth_typing import (
     Address,
     BlockNumber,
@@ -39,7 +39,12 @@ from eth_typing import (
 class Web3Provider:
     def __init__(self, node_url: str):
         self.node_url = node_url
-        self.web3 = Web3(Web3.AsyncHTTPProvider(node_url))
+        self.web3 = AsyncWeb3(AsyncHTTPProvider(node_url))
+
+    @staticmethod
+    async def create_session():
+        session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False))
+        return session
 
     async def is_address(self, address: Union[Address, ChecksumAddress, ENS]) -> bool:
         return self.web3.is_address(address)
@@ -61,28 +66,28 @@ class Web3Provider:
             raise ValueError(f"Invalid address: {address}") from e
 
     async def max_priority_fee(self) -> Wei:
-        return self.web3.eth.max_priority_fee
+        return await self.web3.eth.max_priority_fee
 
     async def gas_price(self) -> Wei:
-        return self.web3.eth.gas_price
+        return await self.web3.eth.gas_price
 
     async def chain_id(self) -> int:
-        return self.web3.eth.chain_id
+        return await self.web3.eth.chain_id
 
     async def get_balance(self, address: Union[Address, ChecksumAddress, ENS]) -> Wei:
         if not await self.is_address(address):
             raise ValueError(f"Invalid address: {address}")
-        return self.web3.eth.get_balance(address)
+        return await self.web3.eth.get_balance(address)
 
     async def get_block_number(self) -> BlockNumber:
-        return self.web3.eth.block_number
+        return await self.web3.eth.block_number
 
     async def get_block(self, block_identifier) -> BlockData:
-        return self.web3.eth.get_block(block_identifier)
+        return await self.web3.eth.get_block(block_identifier)
 
     async def get_transaction(self, transaction_hash: _Hash32) -> TxData:
         try:
-            return self.web3.eth.get_transaction(transaction_hash)
+            return await self.web3.eth.get_transaction(transaction_hash)
         except TransactionNotFound:
             raise ValueError(f"Transaction not found: {transaction_hash}")
 
@@ -95,24 +100,40 @@ class Web3Provider:
 
     async def get_transaction_receipt(self, transaction_hash: _Hash32) -> TxReceipt:
         try:
-            return self.web3.eth.get_transaction_receipt(transaction_hash)
+            return await self.web3.eth.get_transaction_receipt(transaction_hash)
         except TransactionNotFound:
             raise ValueError(f"Transaction receipt not found: {transaction_hash}")
 
     async def send_raw_transaction(
         self, signed_transaction: Union[HexStr, bytes]
     ) -> HexBytes:
-        return self.web3.eth.send_raw_transaction(signed_transaction)
+        return await self.web3.eth.send_raw_transaction(signed_transaction)
 
     async def sign_transaction(self, transaction: dict, private_key) -> SignedTransaction:
-        return self.web3.eth.account.sign_transaction(transaction, private_key)
+        return await self.web3.eth.account.sign_transaction(transaction, private_key)
 
     async def estimate_gas(self, transaction: dict) -> int:
-        return self.web3.eth.estimate_gas(transaction)
+        return await self.web3.eth.estimate_gas(transaction)
 
     async def contract(
         self, address: Union[Address, ChecksumAddress, ENS], abi: list
-    ) -> Union[Type[Contract], Contract]:
+    ) -> AsyncContract:
         if not await self.is_address(address):
             raise ValueError(f"Invalid address: {address}")
         return self.web3.eth.contract(address=address, abi=abi)
+
+
+# async def main():
+#     w = Web3Provider("https://zkevm-rpc.com")
+#
+#     async with await w.create_session() as session:
+#         await w.web3.provider.cache_async_session(session)
+#         a = await w.get_block_number()
+#         b = await w.gas_price()
+#         c = await w.chain_id()
+#         print(a)
+#         print(b)
+#         print(c)
+#
+# if __name__ == "__main__":
+#     asyncio.run(main())
