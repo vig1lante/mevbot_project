@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv, find_dotenv
 
-dotenv_path = find_dotenv('.env')
+dotenv_path = find_dotenv(".env")
 
 if dotenv_path:
     load_dotenv(dotenv_path)
@@ -11,7 +11,7 @@ else:
     print(".env not found using default variables")
 
 
-PUBLIC_KEY = os.getenv("PUBLIC_KEY", default=None)
+PUBLIC_KEY = int(os.getenv("PUBLIC_KEY", default=None))
 
 PRIVATE_KEY = os.getenv("PRIVATE_KEY", default=None)
 

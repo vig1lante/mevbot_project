@@ -1,79 +1,55 @@
+import asyncio
+
 from source.dexes.dex_class import DexClass
-from web3.middleware import geth_poa_middleware
+from arbitrage.multi_chain.constants import BSC
 
 
 class PancakeSwapV3(DexClass):
-    def __init__(self, provider_url):
-        super().__init__(provider_url)
-        self.web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+    def __init__(
+        self,
+        node_url: str,
+        fernet_key: str,
+        private_key: str,
+        router_address: str,
+        factory_address: str,
+    ):
+        super().__init__(node_url, fernet_key, private_key)
+        self.router_address = router_address
+        self.factory_address = factory_address
 
-    def is_address(self, address):
-        return self.web3.isAddress(address)
+    async def get_pool(
+        self,
+    ):
+        abi = ""
+        with open(
+            file="mevbot_project\abis\bsc\pancake_swap_factory.abi", mode="r"
+        ) as file:
+            abi = file.readline()
 
-    def is_checksum_address(self, address):
-        return self.web3.isChecksumAddress(address)
+        contract = await self.web3.contract(
+            address=self.factory_address,
+            abi=abi,
+        )
+        if await self.web3.is_checksum_address(
+            BSC.USDT
+        ) and await self.web3.is_checksum_address(BSC.USDC):
+            return await contract.functions.getPool(
+                await self.web3.to_checksum_address(BSC.USDT),
+                await self.web3.to_checksum_address(BSC.USDC),
+            )
 
-    def to_checksum_address(self, address):
-        return self.web3.toChecksumAddress(address)
+    async def swap(
+        self,
+    ): ...
 
-    def max_priority_fee(self):
-        return self.web3.eth.max_priority_fee()
 
-    def gas_price(self):
-        return self.web3.eth.gasPrice
+async def main():
+    from web3 import AsyncWeb3, AsyncHTTPProvider
 
-    def chain_id(self):
-        return self.web3.eth.chain_id
+    w3 = AsyncWeb3(AsyncHTTPProvider("https://zkevm-rpc.com"))
+    a = await w3.eth.block_number
+    print(a)
 
-    def get_balance(self, address):
-        return self.web3.eth.get_balance(address)
 
-    def get_block_number(self):
-        return self.web3.eth.block_number
-
-    def get_block(self, block_identifier):
-        return self.web3.eth.get_block(block_identifier)
-
-    def get_transaction(self, transaction_hash):
-        return self.web3.eth.get_transaction(transaction_hash)
-
-    def wait_for_transaction_receipt(self, transaction_hash, timeout=120):
-        return self.web3.eth.wait_for_transaction_receipt(transaction_hash, timeout)
-
-    def get_transaction_receipt(self, transaction_hash):
-        return self.web3.eth.get_transaction_receipt(transaction_hash)
-
-    def send_raw_transaction(self, signed_transaction):
-        return self.web3.eth.send_raw_transaction(signed_transaction)
-
-    def sign_transaction(self, transaction_dict, private_key):
-        return self.web3.eth.account.sign_transaction(transaction_dict, private_key)
-
-    def estimate_gas(self, transaction_dict):
-        return self.web3.eth.estimate_gas(transaction_dict)
-
-    def contract(self, address, abi):
-        return self.web3.eth.contract(address=address, abi=abi)
-
-    def get_pool_info(self, pool_address, pool_abi):
-        contract = self.contract(pool_address, pool_abi)
-        reserves = contract.functions.getReserves().call()
-        return reserves
-
-    def swap_tokens(self, router_address, router_abi, amount_in, amount_out_min, path, to, deadline, private_key):
-        contract = self.contract(router_address, router_abi)
-        transaction = contract.functions.swapExactTokensForTokens(
-            amount_in,
-            amount_out_min,
-            path,
-            to,
-            deadline
-        ).buildTransaction({
-            'chainId': self.chain_id(),
-            'gas': 2000000,
-            'gasPrice': self.gas_price(),
-            'nonce': self.web3.eth.get_transaction_count(to),
-        })
-        signed_tx = self.sign_transaction(transaction, private_key)
-        tx_hash = self.send_raw_transaction(signed_tx.rawTransaction)
-        return tx_hash
+if __name__ == "__main__":
+    asyncio.run(main())

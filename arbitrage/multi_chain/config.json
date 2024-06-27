@@ -1,0 +1,19 @@
+{
+  "bot_settings": {
+    "net1": {
+      "name": "BSC",
+      "dex": "PancakeSwap"
+    },
+    "net2": {
+      "name": "POLYGON",
+      "dex": "QuickSwap"
+    },
+    "pairs": {
+      "USDT/USDC": {"fee": "10000"},
+      "USDT/BTCB": {"fee": "10000"},
+      "USDT/MATIC": {"fee": "10000"}
+    },
+    "production_mode": false
+  }
+
+}
