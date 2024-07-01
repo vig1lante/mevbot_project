@@ -11,7 +11,7 @@ else:
     print(".env not found using default variables")
 
 
-PUBLIC_KEY = int(os.getenv("PUBLIC_KEY", default=None))
+PUBLIC_KEY = os.getenv("PUBLIC_KEY", default=None)
 
 PRIVATE_KEY = os.getenv("PRIVATE_KEY", default=None)
 

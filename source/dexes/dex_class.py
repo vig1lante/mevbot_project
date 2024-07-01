@@ -23,4 +23,7 @@ class DexClass(ABC):
     @abstractmethod
     async def get_pool(
         self,
+        first_address: str,
+        second_address: str,
+        fee: int,
     ): ...

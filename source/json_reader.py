@@ -22,4 +22,8 @@ class JsonReader:
 
     @property
     def net1(self):
-        return self.bot_settings.get("")
+        return self.bot_settings.get("net1")
+
+    @property
+    def pairs(self):
+        return self.bot_settings.get("pairs")

@@ -2,6 +2,10 @@ import asyncio
 
 from source.dexes.dex_class import DexClass
 from arbitrage.multi_chain.constants import BSC
+from service_settings import (
+    PRIVATE_KEY,
+    FERNET_CRYPT_KEY,
+)
 
 
 class PancakeSwapV3(DexClass):
@@ -19,10 +23,14 @@ class PancakeSwapV3(DexClass):
 
     async def get_pool(
         self,
+        first_address: str,
+        second_address: str,
+        fee: int,
     ):
         abi = ""
         with open(
-            file="mevbot_project\abis\bsc\pancake_swap_factory.abi", mode="r"
+            file="C:\\Users\\DANIL\\Projects\\mevbot_project\\abis\\bsc\\pancake_swap_factory.abi",  # todo допилить автоматическое нахождение нужных abi в файлах проекта
+            mode="r",
         ) as file:
             abi = file.readline()
 
@@ -30,13 +38,20 @@ class PancakeSwapV3(DexClass):
             address=self.factory_address,
             abi=abi,
         )
-        if await self.web3.is_checksum_address(
-            BSC.USDT
-        ) and await self.web3.is_checksum_address(BSC.USDC):
-            return await contract.functions.getPool(
-                await self.web3.to_checksum_address(BSC.USDT),
-                await self.web3.to_checksum_address(BSC.USDC),
-            )
+
+        first_address = await self.web3.to_checksum_address(first_address)
+        second_address = await self.web3.to_checksum_address(second_address)
+
+        is_check_sum_usdt = await self.web3.is_checksum_address(first_address)
+        is_check_sum_usdc = await self.web3.is_checksum_address(second_address)
+
+        if is_check_sum_usdt and is_check_sum_usdc:
+            pool = await contract.functions.getPool(
+                first_address,
+                second_address,
+                fee,  # todo допилить читалку json
+            ).call()
+            return pool
 
     async def swap(
         self,
@@ -46,9 +61,19 @@ class PancakeSwapV3(DexClass):
 async def main():
     from web3 import AsyncWeb3, AsyncHTTPProvider
 
-    w3 = AsyncWeb3(AsyncHTTPProvider("https://zkevm-rpc.com"))
-    a = await w3.eth.block_number
-    print(a)
+    ps = PancakeSwapV3(
+        node_url="https://bsc-dataseed1.binance.org/",
+        private_key=PRIVATE_KEY,
+        fernet_key=FERNET_CRYPT_KEY,
+        router_address=BSC.PANCAKE_SWAP_ROUTER,
+        factory_address=BSC.PANCAKE_SWAP_ROUTER,
+    )
+    pool = await ps.get_pool(
+        BSC.USDT,
+        BSC.USDC,
+        10000,
+    )
+    print(pool)
 
 
 if __name__ == "__main__":
