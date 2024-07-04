@@ -109,7 +109,11 @@ class Web3Provider:
     ) -> HexBytes:
         return await self.web3.eth.send_raw_transaction(signed_transaction)
 
-    async def sign_transaction(self, transaction: dict, private_key) -> SignedTransaction:
+    async def sign_transaction(
+        self,
+        transaction: dict,
+        private_key,
+    ) -> SignedTransaction:
         return await self.web3.eth.account.sign_transaction(transaction, private_key)
 
     async def estimate_gas(self, transaction: dict) -> int:

@@ -18,6 +18,9 @@ class DexClass(ABC):
     @abstractmethod
     async def swap(
         self,
+        address: str,
+        amount: int,
+        price_limit: int,
     ): ...
 
     @abstractmethod

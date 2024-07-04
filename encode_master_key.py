@@ -21,7 +21,8 @@ print(f"Your encrypted private key -> \n{encrypted_key}")
 print("Проверка на расшифрование ключа:")
 decrypter = Fernet(FERNET_CRYPT_KEY)
 private_key = decrypter.decrypt(bytes(encrypted_key, encoding="utf-8")).decode(
-        encoding="utf-8")
+    encoding="utf-8"
+)
 
 if private_key == PRIVATE_KEY:
     print("Проверка прошла успешно")
