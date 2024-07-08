@@ -3,23 +3,23 @@ services:
   arbitrage-one-chain-bot:
     build:
       context: .
-      dockerfile: arbitrage_one_chain_bot/Dockerfile
+      dockerfile: one_chain/Dockerfile
     volumes:
-      - ./logs/arbitrage_one_chain_bot:/app/logs/arbitrage_one_chain_bot
+      - ./logs/one_chain:/app/logs/one_chain
     restart: always
     env_file:
-      - .env
+      - config.env
     networks:
       - mevbot_project_net
   arbitrage-some-chains-bot:
     build:
       context: .
-      dockerfile: arbitrage_some_chains_bot/Dockerfile
+      dockerfile: multi_chain/Dockerfile
     volumes:
-      - ./logs/arbitrage_some_chains_bot:/app/logs/arbitrage_some_chains_bot
+      - ./logs/multi_chain:/app/logs/multi_chain
     restart: always
     env_file:
-      - .env
+      - config.env
     networks:
       - mevbot_project_net
 networks:

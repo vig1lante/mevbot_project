@@ -20,15 +20,19 @@ class TracebackInfoFilter(logging.Filter):
 
 class Logger:
     console_format = ColoredFormatter(
-        "%(log_color)s%(levelname)s%(reset)s - %(message_log_color)s%(message)s",
+        '%(log_color)s%(levelname)s%(reset)s - %(message_log_color)s%(message)s',
         log_colors={
-            "DEBUG": "cyan",
-            "INFO": "green",
-            "WARNING": "yellow",
-            "ERROR": "red",
-            "CRITICAL": "red,bg_white",
+            'DEBUG': 'cyan',
+            'INFO': 'green',
+            'WARNING': 'yellow',
+            'ERROR': 'red',
+            'CRITICAL': 'red,bg_white',
         },
-        secondary_log_colors={"message": {"ERROR": "red"}},
+        secondary_log_colors={
+            'message': {
+                'ERROR': 'red'
+            }
+        }
     )
 
     def __init__(self, name, path, production_mode=False):
@@ -52,7 +56,7 @@ class Logger:
             file_handler.setLevel(logging.INFO)
             self._logger.setLevel(logging.INFO)
 
-        file_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        file_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         console_handler.setFormatter(self.console_format)
         file_handler.setFormatter(file_format)
 
@@ -69,22 +73,20 @@ class Logger:
 
 
 today = datetime.today()
-arbitrage_one_chain_bot_logger = Logger(
-    "arbitrage_one_chain_bot",
+one_chain_bot_logger = Logger(
+    "one_chain",
     os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
         "logs",
-        "arbitrage_one_chain_bot.log",
+        "one_chain.log"
     ),
-    production_mode=service_settings.PRODUCTION_MODE,
-).logger
+    production_mode=service_settings.PRODUCTION_MODE).logger
 
-arbitrage_some_chains_bot_logger = Logger(
-    "arbitrage_some_chains_bot",
+multi_chain_bot_logger = Logger(
+    "multi_chain",
     os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
         "logs",
-        "arbitrage_some_chains_bot.log",
+        "multi_chain.log"
     ),
-    production_mode=service_settings.PRODUCTION_MODE,
-).logger
+    production_mode=service_settings.PRODUCTION_MODE).logger
