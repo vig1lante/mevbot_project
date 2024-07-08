@@ -9,10 +9,8 @@ from source.json_reader import JsonReader
 from arbitrage.multi_chain.constants import BSC
 from service_settings import (
     PRIVATE_KEY,
-    PUBLIC_KEY,
     FERNET_CRYPT_KEY,
 )
-import math
 
 
 class PancakeSwapV3(DexClass):
@@ -36,7 +34,6 @@ class PancakeSwapV3(DexClass):
         second_address: str,
         fee: int,
     ):
-
 
         contract = await self.web3.contract(
             address=self.factory_address,
@@ -70,7 +67,6 @@ class PancakeSwapV3(DexClass):
 
     async def swap(
         self,
-        to_address: str,
         amount_in: int,
         amount_out: int,
         token_in: str,
@@ -84,9 +80,7 @@ class PancakeSwapV3(DexClass):
             bytes(PRIVATE_KEY, encoding="utf-8")
         ).decode(encoding="utf-8")
 
-        from_address = await self.web3.from_key(
-            decrypted_from_private_key
-        )
+        from_address = await self.web3.from_key(decrypted_from_private_key)
         from_address = from_address.address
         from_wallet = await self.web3.to_checksum_address(from_address)
         token_in = await self.web3.to_checksum_address(token_in)
@@ -97,29 +91,36 @@ class PancakeSwapV3(DexClass):
             abi=abi_token_in,
         )
 
-        pool_address = await self.get_pool(
-            first_address=token_in,
-            second_address=token_out,
-            fee=pool_fee,
+        if (
+            await token_in_contract.functions.allowance(
+                from_address, self.router_address
+            ).call()
+            < amount_in
+        ):
+            await approve_token_spender(
+                self.web3,
+                token_in_contract,
+                from_wallet,
+                decrypted_from_private_key,
+                self.router_address,
+                await self.web3.to_wei(1000000, "ether"),
+            )
+
+        path = (
+            await self.web3.to_bytes(hexstr=token_in)
+            + pool_fee.to_bytes(3, "big")
+            + await self.web3.to_bytes(hexstr=token_out)
         )
-
-        if await token_in_contract.functions.allowance(from_address, pool_address).call() < amount_in:
-            await approve_token_spender(self.web3, token_in_contract, from_wallet, decrypted_from_private_key, pool_address, await self.web3.to_wei(1000000, 'ether'))
-
-        path = (await self.web3.to_bytes(hexstr=token_in) + pool_fee.to_bytes(3, 'big')
-                + await self.web3.to_bytes(hexstr=token_out))
-
 
         router_contract = await self.web3.contract(
             address=self.router_address,
             abi=self.abi_router,
         )
-        to_address = await self.web3.to_checksum_address(to_address)
         # Вызов функции exactInput
         tx = await router_contract.functions.exactInput(
             (
                 path,
-                to_address,
+                from_wallet,
                 amount_in,
                 amount_out,
             )
@@ -128,9 +129,7 @@ class PancakeSwapV3(DexClass):
                 "from": from_wallet,
                 "gas": 500000,
                 "gasPrice": await self.web3.gas_price(),
-                "nonce": await self.web3.get_transaction_count(
-                    from_wallet
-                ),
+                "nonce": await self.web3.get_transaction_count(from_wallet),
             }
         )
 
@@ -143,17 +142,16 @@ class PancakeSwapV3(DexClass):
 
         return receipt
 
-async def approve_token_spender(w3, token_contract, from_wallet, from_private_key, spender, amount):
-    tx = await token_contract.functions.approve(
-        spender, amount
-    ).build_transaction(
+
+async def approve_token_spender(
+    w3, token_contract, from_wallet, from_private_key, spender, amount
+):
+    tx = await token_contract.functions.approve(spender, amount).build_transaction(
         {
             "from": from_wallet,
             "gas": 70000,
             "gasPrice": await w3.gas_price(),
-            "nonce": await w3.get_transaction_count(
-                from_wallet
-            ),
+            "nonce": await w3.get_transaction_count(from_wallet),
         }
     )
 
@@ -164,6 +162,7 @@ async def approve_token_spender(w3, token_contract, from_wallet, from_private_ke
     # Ожидание подтверждения транзакции
     receipt = await w3.wait_for_transaction_receipt(tx_hash)
     return receipt
+
 
 async def main():
     config_dir = os.path.join(
@@ -182,25 +181,24 @@ async def main():
         router_address=BSC.PANCAKE_SWAP_ROUTER,
         factory_address=BSC.PANCAKE_SWAP_FACTORY,
     )
-    pool = await ps.get_pool(
-        first_address=BSC.USDT,
-        second_address=BSC.USDC,
-        fee=int(pair.get("fee")),
-    )
-    print(pool)
+    # pool = await ps.get_pool(
+    #     first_address=BSC.USDT,
+    #     second_address=BSC.USDC,
+    #     fee=int(pair.get("fee")),
+    # )
+    # print(pool)
 
     usdt_abi = get_abi(BSC.NAME, "usdt.abi")
     usdc_abi = get_abi(BSC.NAME, "usdt.abi")
 
     swap = await ps.swap(
-        to_address=PUBLIC_KEY,
         amount_in=await ps.web3.to_wei(1, "ether"),
         amount_out=await ps.web3.to_wei(0.9, "ether"),
         token_in=BSC.USDT,
         token_out=BSC.USDC,
         abi_token_in=usdt_abi,
         abi_token_out=usdc_abi,
-        pool_fee=int(pair.get("fee"))
+        pool_fee=int(pair.get("fee")),
     )
     print(swap)
 
