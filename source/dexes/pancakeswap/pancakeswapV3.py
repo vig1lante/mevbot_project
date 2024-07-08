@@ -9,10 +9,10 @@ from source.json_reader import JsonReader
 from arbitrage.multi_chain.constants import BSC
 from service_settings import (
     PRIVATE_KEY,
+    PUBLIC_KEY,
     FERNET_CRYPT_KEY,
 )
-
-# from web3 import Web3
+import math
 
 
 class PancakeSwapV3(DexClass):
@@ -37,13 +37,10 @@ class PancakeSwapV3(DexClass):
         fee: int,
     ):
 
-        abi = ""
-        with open(file=self.abi_factory, mode="r") as file:
-            abi = file.readline()
 
         contract = await self.web3.contract(
             address=self.factory_address,
-            abi=abi,
+            abi=self.abi_factory,
         )
 
         first_address = await self.web3.to_checksum_address(first_address)
@@ -60,56 +57,85 @@ class PancakeSwapV3(DexClass):
             ).call()
             return pool
 
+    async def multiple_swap(
+        self,
+        to_address: str,
+        amount_in: int,
+        amount_out: int,
+        tokens: list,
+        abi_tokens: list,
+        pool_fee: list,
+    ):
+        pass
+
     async def swap(
         self,
         to_address: str,
-        amount: int,
-        price_limit: int,
+        amount_in: int,
+        amount_out: int,
+        token_in: str,
+        token_out: str,
+        abi_token_in: str,
+        abi_token_out: str,
+        pool_fee: int,
     ):
         decrypter = Fernet(FERNET_CRYPT_KEY)
         decrypted_from_private_key = decrypter.decrypt(
             bytes(PRIVATE_KEY, encoding="utf-8")
         ).decode(encoding="utf-8")
 
-        from_address = self.web3.web3.eth.account.from_key(  # todo добавить в провайдер
+        from_address = await self.web3.from_key(
             decrypted_from_private_key
-        ).address
+        )
+        from_address = from_address.address
         from_wallet = await self.web3.to_checksum_address(from_address)
+        token_in = await self.web3.to_checksum_address(token_in)
+        token_out = await self.web3.to_checksum_address(token_out)
 
-        path = self.web3.web3.to_bytes(hexstr=BSC.USDT) + self.web3.web3.to_bytes(
-            hexstr=BSC.USDC
+        token_in_contract = await self.web3.contract(
+            address=token_in,
+            abi=abi_token_in,
         )
 
-        abi = ""
-        with open(file=self.abi_router, mode="r") as file:
-            abi = file.readline()
+        pool_address = await self.get_pool(
+            first_address=token_in,
+            second_address=token_out,
+            fee=pool_fee,
+        )
+
+        if await token_in_contract.functions.allowance(from_address, pool_address).call() < amount_in:
+            await approve_token_spender(self.web3, token_in_contract, from_wallet, decrypted_from_private_key, pool_address, await self.web3.to_wei(1000000, 'ether'))
+
+        path = (await self.web3.to_bytes(hexstr=token_in) + pool_fee.to_bytes(3, 'big')
+                + await self.web3.to_bytes(hexstr=token_out))
+
 
         router_contract = await self.web3.contract(
             address=self.router_address,
-            abi=abi,
+            abi=self.abi_router,
         )
         to_address = await self.web3.to_checksum_address(to_address)
         # Вызов функции exactInput
-        tx = router_contract.functions.exactInput(
+        tx = await router_contract.functions.exactInput(
             (
                 path,
                 to_address,
-                amount,
-                price_limit,
+                amount_in,
+                amount_out,
             )
         ).build_transaction(
             {
                 "from": from_wallet,
-                "gas": 300000,
+                "gas": 500000,
                 "gasPrice": await self.web3.gas_price(),
-                "nonce": self.web3.web3.eth.get_transaction_count(
+                "nonce": await self.web3.get_transaction_count(
                     from_wallet
-                ),  # todo добавить в провайдер
+                ),
             }
         )
 
         # Подписание и отправка транзакции
-        signed_tx = await self.web3.sign_transaction(tx)
+        signed_tx = await self.web3.sign_transaction(tx, decrypted_from_private_key)
         tx_hash = await self.web3.send_raw_transaction(signed_tx.rawTransaction)
 
         # Ожидание подтверждения транзакции
@@ -117,6 +143,27 @@ class PancakeSwapV3(DexClass):
 
         return receipt
 
+async def approve_token_spender(w3, token_contract, from_wallet, from_private_key, spender, amount):
+    tx = await token_contract.functions.approve(
+        spender, amount
+    ).build_transaction(
+        {
+            "from": from_wallet,
+            "gas": 70000,
+            "gasPrice": await w3.gas_price(),
+            "nonce": await w3.get_transaction_count(
+                from_wallet
+            ),
+        }
+    )
+
+    # Подписание и отправка транзакции
+    signed_tx = await w3.sign_transaction(tx, from_private_key)
+    tx_hash = await w3.send_raw_transaction(signed_tx.rawTransaction)
+
+    # Ожидание подтверждения транзакции
+    receipt = await w3.wait_for_transaction_receipt(tx_hash)
+    return receipt
 
 async def main():
     config_dir = os.path.join(
@@ -136,18 +183,26 @@ async def main():
         factory_address=BSC.PANCAKE_SWAP_FACTORY,
     )
     pool = await ps.get_pool(
-        BSC.USDT,
-        BSC.USDC,
-        int(pair.get("fee")),
+        first_address=BSC.USDT,
+        second_address=BSC.USDC,
+        fee=int(pair.get("fee")),
     )
     print(pool)
-    # w3 = Web3(Web3.HTTPProvider("https://bsc-dataseed1.binance.org/"))
-    # swap = await ps.swap(
-    #     "0xCcF4ad12B17C07C82f3d8EB5C6453Be46497C27c",
-    #     w3.to_wei(1, "ether"),
-    #     w3.to_wei(0.99, "ether"),
-    # )
-    # print(swap)
+
+    usdt_abi = get_abi(BSC.NAME, "usdt.abi")
+    usdc_abi = get_abi(BSC.NAME, "usdt.abi")
+
+    swap = await ps.swap(
+        to_address=PUBLIC_KEY,
+        amount_in=await ps.web3.to_wei(1, "ether"),
+        amount_out=await ps.web3.to_wei(0.9, "ether"),
+        token_in=BSC.USDT,
+        token_out=BSC.USDC,
+        abi_token_in=usdt_abi,
+        abi_token_out=usdc_abi,
+        pool_fee=int(pair.get("fee"))
+    )
+    print(swap)
 
 
 if __name__ == "__main__":

@@ -18,9 +18,24 @@ class DexClass(ABC):
     @abstractmethod
     async def swap(
         self,
-        address: str,
-        amount: int,
-        price_limit: int,
+        to_address: str,
+        amount_in: int,
+        amount_out: int,
+        token_in: str,
+        token_out: str,
+        abi_token_in: str,
+        abi_token_out: str,
+        pool_fee: int,
+    ): ...
+
+    async def multiple_swap(
+        self,
+        to_address: str,
+        amount_in: int,
+        amount_out: int,
+        tokens: list,
+        abi_tokens: list,
+        pool_fee: list,
     ): ...
 
     @abstractmethod

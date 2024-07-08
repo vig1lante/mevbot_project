@@ -9,7 +9,7 @@
       "dex": "QuickSwap"
     },
     "pairs": {
-      "USDT/USDC": {"fee": "10000"},
+      "USDT/USDC": {"fee": "500"},
       "USDT/BTCB": {"fee": "10000"},
       "USDT/MATIC": {"fee": "10000"}
     },
