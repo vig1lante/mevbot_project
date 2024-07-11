@@ -11,6 +11,8 @@ from service_settings import (
     PRIVATE_KEY,
     FERNET_CRYPT_KEY,
 )
+from source.abi_storage import AbiStorage, Net, SmartContractName
+from source.dexes.dex_pool import DexPool
 
 
 class PancakeSwapV3(DexClass):
@@ -21,12 +23,16 @@ class PancakeSwapV3(DexClass):
         private_key: str,
         router_address: str,
         factory_address: str,
+        abi_factory: str,
+        abi_router: str,
+        abi_pool: str,
     ):
         super().__init__(node_url, fernet_key, private_key)
         self.router_address = router_address
         self.factory_address = factory_address
-        self.abi_factory = get_abi(BSC.NAME, "pancake_swap_factory.abi")
-        self.abi_router = get_abi(BSC.NAME, "pancake_swap_router.abi")
+        self.abi_factory = abi_factory
+        self.abi_router = abi_router
+        self.abi_pool = abi_pool
 
     async def get_pool(
         self,
@@ -52,11 +58,18 @@ class PancakeSwapV3(DexClass):
                 second_address,
                 fee,
             ).call()
-            return pool
+            contract_pool = await self.web3.contract(address=pool, abi=self.abi_pool)
+            return DexPool(
+                "1",
+                "2",
+                first_address,
+                second_address,
+                pool,
+                contract_pool,
+            )
 
     async def multiple_swap(
         self,
-        to_address: str,
         amount_in: int,
         amount_out: int,
         tokens: list,
@@ -172,6 +185,16 @@ async def main():
         "config.json",
     )
     config = JsonReader(config_dir)
+    abi_storage = AbiStorage()
+    abi_factory = abi_storage.get_abi(
+        Net.BNB.value, SmartContractName.PancakeSwapFactory.value
+    )
+    abi_router = abi_storage.get_abi(
+        Net.BNB.value, SmartContractName.PancakeSwapRouter.value
+    )
+    abi_pool = abi_storage.get_abi(
+        Net.BNB.value, SmartContractName.PancakeSwapV3Pool.value
+    )
     pair = config.pairs.get(BSC.PAIR)
 
     ps = PancakeSwapV3(
@@ -180,27 +203,30 @@ async def main():
         fernet_key=FERNET_CRYPT_KEY,
         router_address=BSC.PANCAKE_SWAP_ROUTER,
         factory_address=BSC.PANCAKE_SWAP_FACTORY,
+        abi_factory=abi_factory,
+        abi_router=abi_router,
+        abi_pool=abi_pool,
     )
-    # pool = await ps.get_pool(
-    #     first_address=BSC.USDT,
-    #     second_address=BSC.USDC,
-    #     fee=int(pair.get("fee")),
+    pool = await ps.get_pool(
+        first_address=BSC.USDT,
+        second_address=BSC.USDC,
+        fee=int(pair.get("fee")),
+    )
+    print(await pool.fee())
+
+    # usdt_abi = abi_storage.get_abi(Net.BNB.value, SmartContractName.USDT.value)
+    # usdc_abi = abi_storage.get_abi(Net.BNB.value, SmartContractName.USDC.value)
+
+    # swap = await ps.swap(
+    #     amount_in=await ps.web3.to_wei(1, "ether"),
+    #     amount_out=await ps.web3.to_wei(0.9, "ether"),
+    #     token_in=BSC.USDT,
+    #     token_out=BSC.USDC,
+    #     abi_token_in=usdt_abi,
+    #     abi_token_out=usdc_abi,
+    #     pool_fee=int(pair.get("fee")),
     # )
-    # print(pool)
-
-    usdt_abi = get_abi(BSC.NAME, "usdt.abi")
-    usdc_abi = get_abi(BSC.NAME, "usdt.abi")
-
-    swap = await ps.swap(
-        amount_in=await ps.web3.to_wei(1, "ether"),
-        amount_out=await ps.web3.to_wei(0.9, "ether"),
-        token_in=BSC.USDT,
-        token_out=BSC.USDC,
-        abi_token_in=usdt_abi,
-        abi_token_out=usdc_abi,
-        pool_fee=int(pair.get("fee")),
-    )
-    print(swap)
+    # print(swap)
 
 
 if __name__ == "__main__":
