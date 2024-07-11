@@ -13,3 +13,15 @@ poetry shell
 ```shell
 poetry update
 ```
+
+## Alembic install
+
+in dir
+```shell
+pip3 install alembic
+```
+```shell
+alembic upgrade head
+```
+
+
