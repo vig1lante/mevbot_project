@@ -1,5 +1,5 @@
 class BSC:
-    NAME = "bsc"
+    NAME = "BNB"
     PAIR = "USDT/USDC"
 
     PANCAKE_SWAP_ROUTER = "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4"

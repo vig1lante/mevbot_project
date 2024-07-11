@@ -1,27 +1,54 @@
 version: '2.1'
 services:
+  db:
+    image: postgres:14.1-alpine
+    environment:
+      TZ: "Europe/Moscow"
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db_data/postgresql:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: "pg_isready --username=${POSTGRES_USER} && psql --username=${POSTGRES_USER} --list"
+      timeout: 10s
+      retries: 100
+    networks:
+      - mevbot_project_net
+
   arbitrage-one-chain-bot:
     build:
       context: .
-      dockerfile: one_chain/Dockerfile
+      dockerfile: arbitrage/one_chain/Dockerfile
     volumes:
       - ./logs/one_chain:/app/logs/one_chain
-    restart: always
+    restart: "no"
     env_file:
-      - config.env
+      - .env
     networks:
       - mevbot_project_net
-  arbitrage-some-chains-bot:
-    build:
-      context: .
-      dockerfile: multi_chain/Dockerfile
-    volumes:
-      - ./logs/multi_chain:/app/logs/multi_chain
-    restart: always
-    env_file:
-      - config.env
-    networks:
-      - mevbot_project_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+
+#  arbitrage-some-chains-bot:
+#    build:
+#      context: .
+#      dockerfile: arbitrage/multi_chain/Dockerfile
+#    volumes:
+#      - ./logs/multi_chain:/app/logs/multi_chain
+#    restart: always
+#    env_file:
+#      - .env
+#    networks:
+#      - mevbot_project_net
+#     depends_on:
+#         db:
+#           condition: service_healthy
+
 networks:
   mevbot_project_net:
 
