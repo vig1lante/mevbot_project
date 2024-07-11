@@ -7,7 +7,6 @@ class DexPool:
         token0_address,
         token1_address,
         contract_address,
-        web3,
         contract,
     ):
         self.token0_name = token0_name
@@ -15,7 +14,6 @@ class DexPool:
         self.token0_address = token0_address
         self.token1_address = token1_address
         self.contract_address = contract_address
-        self.web3 = web3
         self.contract = contract
 
     async def fee(self):
