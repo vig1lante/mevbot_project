@@ -9,10 +9,14 @@ class SmartContractName(enum.Enum):
     PancakeSwapFactory = "pancake_swap_factory"
     PancakeSwapRouter = "pancake_swap_router"
     PancakeSwapV3Pool = "pancake_swap_v3_pool"
+
     UniswapFactory = "uniswap_factory"
     UniswapRouter = "uniswap_router"
+    UniswapPool = "uniswap_pool"
+
     QuickSwapFactory = "quickswap_factory"
     QuickSwapRouter = "quickswap_router"
+
     USDC = "usdc"
     USDT = "usdt"
 
