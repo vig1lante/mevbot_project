@@ -4,15 +4,18 @@ from source.db_driver import PostgresDriver, ABIs
 import enum
 import os
 
+
 class SmartContractName(enum.Enum):
     PancakeSwapFactory = "pancake_swap_factory"
     PancakeSwapRouter = "pancake_swap_router"
+    PancakeSwapV3Pool = "pancake_swap_v3_pool"
     UniswapFactory = "uniswap_factory"
     UniswapRouter = "uniswap_router"
     QuickSwapFactory = "quickswap_factory"
     QuickSwapRouter = "quickswap_router"
     USDC = "usdc"
     USDT = "usdt"
+
 
 class Net(enum.Enum):
     BNB = "BNB"
@@ -21,6 +24,7 @@ class Net(enum.Enum):
     Ethereum = "Ethereum"
     Avalanche = "Avalanche"
     Tron = "Tron"
+
 
 class AbiStorage:
     def __init__(self):
@@ -46,18 +50,18 @@ class AbiStorage:
                             abi_str = ""
                             with open(file=abi_path, mode="r") as file:
                                 abi_str = file.readline()
-                            abi_obj = ABIs(
-                                name=abi,
-                                net=directory,
-                                abi=abi_str
+                            abi_obj = ABIs(name=abi, net=directory, abi=abi_str)
+                            exists_abi = self.db_driver.exists_abi(
+                                ABIs.name == abi, ABIs.net == directory
                             )
-                            exists_abi = self.db_driver.exists_abi(ABIs.name == abi, ABIs.net == directory)
                             if exists_abi:
-                                self.db_driver.update_abi(abi_str, ABIs.name == abi, ABIs.net == directory)
+                                self.db_driver.update_abi(
+                                    abi_str, ABIs.name == abi, ABIs.net == directory
+                                )
                             else:
                                 self.db_driver.insert_data(abi_obj)
         else:
-            raise Exception("Directory \"abis\" not founded!")
+            raise Exception('Directory "abis" not founded!')
 
     def get_all_abis(self):
         abis = self.db_driver.get_all_abis()
