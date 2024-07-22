@@ -33,5 +33,4 @@ class JsonReader:
 
     @property
     def pairs(self) -> Optional[dict]:
-
         return self.bot_settings.get("pairs")

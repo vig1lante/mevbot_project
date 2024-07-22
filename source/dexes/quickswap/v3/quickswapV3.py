@@ -1,21 +1,21 @@
 import asyncio
 import os
-from typing import Optional
-
-from cryptography.fernet import Fernet
+from utils import get_abi
 from pathlib import Path
+from cryptography.fernet import Fernet
 from source.dexes.dex_class import DexClass
 from source.json_reader import JsonReader
+
 from arbitrage.multi_chain.constants import BSC
 from service_settings import (
     PRIVATE_KEY,
     FERNET_CRYPT_KEY,
 )
 from source.abi_storage import AbiStorage, Net, SmartContractName
-from source.dexes.dex_pool import DexPool
+from source.dexes.quickswap.v3.quickswapV3_pool import QuickSwapV3Pool
 
 
-class UniSwapV3(DexClass):
+class QuickSwap(DexClass):
     def __init__(
         self,
         node_url: str,
@@ -26,6 +26,7 @@ class UniSwapV3(DexClass):
         abi_factory: str,
         abi_router: str,
         abi_pool: str,
+        deadline: int = 60,  # временной лимит, в течение которого операция обмена токенов должна быть выполнена. Если операция не завершится в течение указанного deadline, то она будет отменена.
     ):
         super().__init__(node_url, fernet_key, private_key)
         self.router_address = router_address
@@ -33,43 +34,50 @@ class UniSwapV3(DexClass):
         self.abi_factory = abi_factory
         self.abi_router = abi_router
         self.abi_pool = abi_pool
+        self.deadline = deadline
 
     async def get_pool(
         self,
         first_address: str,
         second_address: str,
         fee: int,
-    ) -> Optional[DexPool]:
-        first_address = await self.web3.to_checksum_address(first_address)
-        second_address = await self.web3.to_checksum_address(second_address)
+    ):
 
         contract = await self.web3.contract(
             address=self.factory_address,
             abi=self.abi_factory,
         )
 
-        if not await self.web3.is_checksum_address(first_address):
-            return
+        first_address = await self.web3.to_checksum_address(first_address)
+        second_address = await self.web3.to_checksum_address(second_address)
 
-        if not await self.web3.is_checksum_address(second_address):
-            return
+        is_check_sum_usdt = await self.web3.is_checksum_address(first_address)
+        is_check_sum_usdc = await self.web3.is_checksum_address(second_address)
 
-        pool = await contract.functions.getPool(
-            first_address,
-            second_address,
-            fee,
-        ).call()
+        if is_check_sum_usdt and is_check_sum_usdc:
+            pool = await contract.functions.poolByPair(
+                first_address,
+                second_address,
+            ).call()
+            contract_pool = await self.web3.contract(address=pool, abi=self.abi_pool)
+            return DexPool(
+                "1",
+                "2",
+                first_address,
+                second_address,
+                pool,
+                contract_pool,
+            )
 
-        contract_pool = await self.web3.contract(address=pool, abi=self.abi_pool)
-
-        return DexPool(
-            "1",  # todo поправить в будущем
-            "2",
-            first_address,
-            second_address,
-            pool,
-            contract_pool,
-        )
+    async def multiple_swap(
+        self,
+        amount_in: int,
+        amount_out: int,
+        tokens: list,
+        abi_tokens: list,
+        pool_fee: list,
+    ):
+        pass
 
     async def swap(
         self,
@@ -81,9 +89,6 @@ class UniSwapV3(DexClass):
         abi_token_out: str,
         pool_fee: int,
     ):
-        token_in = await self.web3.to_checksum_address(token_in)
-        token_out = await self.web3.to_checksum_address(token_out)
-
         decrypter = Fernet(FERNET_CRYPT_KEY)
         decrypted_from_private_key = decrypter.decrypt(
             bytes(PRIVATE_KEY, encoding="utf-8")
@@ -92,6 +97,8 @@ class UniSwapV3(DexClass):
         from_address = await self.web3.from_key(decrypted_from_private_key)
         from_address = from_address.address
         from_wallet = await self.web3.to_checksum_address(from_address)
+        token_in = await self.web3.to_checksum_address(token_in)
+        token_out = await self.web3.to_checksum_address(token_out)
 
         token_in_contract = await self.web3.contract(
             address=token_in,
@@ -128,6 +135,7 @@ class UniSwapV3(DexClass):
             (
                 path,
                 from_wallet,
+                self.deadline,
                 amount_in,
                 amount_out,
             )
@@ -169,58 +177,3 @@ async def approve_token_spender(
     # Ожидание подтверждения транзакции
     receipt = await w3.wait_for_transaction_receipt(tx_hash)
     return receipt
-
-
-async def main():
-    config_dir = os.path.join(
-        Path(__file__).resolve().parent.parent.parent.parent,
-        "arbitrage",
-        "multi_chain",
-        "config.json",
-    )
-    config = JsonReader(config_dir)
-    abi_storage = AbiStorage()
-    abi_factory = abi_storage.get_abi(
-        Net.BNB.value, SmartContractName.UniswapFactory.value
-    )
-    abi_router = abi_storage.get_abi(
-        Net.BNB.value, SmartContractName.UniswapRouter.value
-    )
-    abi_pool = abi_storage.get_abi(Net.BNB.value, SmartContractName.UniswapPool.value)
-    pair = config.pairs.get(BSC.PAIR)
-
-    us = UniSwapV3(
-        node_url="https://bsc-dataseed1.binance.org/",
-        private_key=PRIVATE_KEY,
-        fernet_key=FERNET_CRYPT_KEY,
-        router_address=BSC.UNISWAP_ROUTER,
-        factory_address=BSC.UNISWAP_FACTORY,
-        abi_factory=abi_factory,
-        abi_router=abi_router,
-        abi_pool=abi_pool,
-    )
-    # pool = await us.get_pool(
-    #     first_address=BSC.USDT,
-    #     second_address=BSC.USDC,
-    #     fee=int(pair.get("fee")),
-    # )
-    # print(pool)
-    # print(await pool.fee())
-
-    # usdt_abi = abi_storage.get_abi(Net.BNB.value, SmartContractName.USDT.value)
-    # usdc_abi = abi_storage.get_abi(Net.BNB.value, SmartContractName.USDC.value)
-
-    # swap = await ps.swap(
-    #     amount_in=await ps.web3.to_wei(1, "ether"),
-    #     amount_out=await ps.web3.to_wei(0.9, "ether"),
-    #     token_in=BSC.USDT,
-    #     token_out=BSC.USDC,
-    #     abi_token_in=usdt_abi,
-    #     abi_token_out=usdc_abi,
-    #     pool_fee=int(pair.get("fee")),
-    # )
-    # print(swap)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

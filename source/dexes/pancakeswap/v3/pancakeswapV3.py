@@ -1,6 +1,5 @@
 import asyncio
 import os
-from utils import get_abi
 from pathlib import Path
 from cryptography.fernet import Fernet
 from source.dexes.dex_class import DexClass
@@ -12,10 +11,10 @@ from service_settings import (
     FERNET_CRYPT_KEY,
 )
 from source.abi_storage import AbiStorage, Net, SmartContractName
-from source.dexes.dex_pool import DexPool
+from source.dexes.pancakeswap.v3.pancakeswapV3_pool import PancakeSwapV3Pool
 
 
-class QuickSwap(DexClass):
+class PancakeSwapV3(DexClass):
     def __init__(
         self,
         node_url: str,
@@ -26,7 +25,6 @@ class QuickSwap(DexClass):
         abi_factory: str,
         abi_router: str,
         abi_pool: str,
-        deadline: int = 60,  # временной лимит, в течение которого операция обмена токенов должна быть выполнена. Если операция не завершится в течение указанного deadline, то она будет отменена.
     ):
         super().__init__(node_url, fernet_key, private_key)
         self.router_address = router_address
@@ -34,7 +32,6 @@ class QuickSwap(DexClass):
         self.abi_factory = abi_factory
         self.abi_router = abi_router
         self.abi_pool = abi_pool
-        self.deadline = deadline
 
     async def get_pool(
         self,
@@ -55,12 +52,13 @@ class QuickSwap(DexClass):
         is_check_sum_usdc = await self.web3.is_checksum_address(second_address)
 
         if is_check_sum_usdt and is_check_sum_usdc:
-            pool = await contract.functions.poolByPair(
+            pool = await contract.functions.getPool(
                 first_address,
                 second_address,
+                fee,
             ).call()
             contract_pool = await self.web3.contract(address=pool, abi=self.abi_pool)
-            return DexPool(
+            return PancakeSwapV3Pool(
                 "1",
                 "2",
                 first_address,
@@ -135,7 +133,6 @@ class QuickSwap(DexClass):
             (
                 path,
                 from_wallet,
-                self.deadline,
                 amount_in,
                 amount_out,
             )
@@ -158,6 +155,7 @@ class QuickSwap(DexClass):
         return receipt
 
 
+# todo если подходит ко всем, то вынести в utils
 async def approve_token_spender(
     w3, token_contract, from_wallet, from_private_key, spender, amount
 ):
@@ -177,3 +175,59 @@ async def approve_token_spender(
     # Ожидание подтверждения транзакции
     receipt = await w3.wait_for_transaction_receipt(tx_hash)
     return receipt
+
+
+async def main():
+    config_dir = os.path.join(
+        Path(__file__).resolve().parent.parent.parent.parent.parent,
+        "arbitrage",
+        "multi_chain",
+        "config.json",
+    )
+    config = JsonReader(config_dir)
+    abi_storage = AbiStorage()
+    abi_factory = abi_storage.get_abi(
+        Net.BNB.value, SmartContractName.PancakeSwapFactory.value
+    )
+    abi_router = abi_storage.get_abi(
+        Net.BNB.value, SmartContractName.PancakeSwapRouter.value
+    )
+    abi_pool = abi_storage.get_abi(
+        Net.BNB.value, SmartContractName.PancakeSwapV3Pool.value
+    )
+    pair = config.pairs.get(BSC.PAIR)
+
+    ps = PancakeSwapV3(
+        node_url="https://bsc-dataseed1.binance.org/",
+        private_key=PRIVATE_KEY,
+        fernet_key=FERNET_CRYPT_KEY,
+        router_address=BSC.PANCAKE_SWAP_ROUTER,
+        factory_address=BSC.PANCAKE_SWAP_FACTORY,
+        abi_factory=abi_factory,
+        abi_router=abi_router,
+        abi_pool=abi_pool,
+    )
+    pool = await ps.get_pool(
+        first_address=BSC.USDT,
+        second_address=BSC.USDC,
+        fee=int(pair.get("fee")),
+    )
+    print(await pool.fee())
+
+    # usdt_abi = abi_storage.get_abi(Net.BNB.value, SmartContractName.USDT.value)
+    # usdc_abi = abi_storage.get_abi(Net.BNB.value, SmartContractName.USDC.value)
+
+    # swap = await ps.swap(
+    #     amount_in=await ps.web3.to_wei(1, "ether"),
+    #     amount_out=await ps.web3.to_wei(0.9, "ether"),
+    #     token_in=BSC.USDT,
+    #     token_out=BSC.USDC,
+    #     abi_token_in=usdt_abi,
+    #     abi_token_out=usdc_abi,
+    #     pool_fee=int(pair.get("fee")),
+    # )
+    # print(swap)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

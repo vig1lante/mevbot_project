@@ -27,6 +27,7 @@ class DexClass(ABC):
         pool_fee: int,
     ): ...
 
+    @abstractmethod
     async def multiple_swap(
         self,
         to_address: str,
