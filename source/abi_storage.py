@@ -6,16 +6,17 @@ import os
 
 
 class SmartContractName(enum.Enum):
-    PancakeSwapFactory = "pancake_swap_factory"
-    PancakeSwapRouter = "pancake_swap_router"
+    PancakeSwapFactory = "pancake_swap_v3_factory"
+    PancakeSwapRouter = "pancake_swap_v3_router"
     PancakeSwapV3Pool = "pancake_swap_v3_pool"
 
-    UniswapFactory = "uniswap_factory"
-    UniswapRouter = "uniswap_router"
-    UniswapPool = "uniswap_pool"
+    UniswapFactory = "uniswap_v3_factory"
+    UniswapRouter = "uniswap_v3_router"
+    UniswapPool = "uniswap_v3_pool"
 
-    QuickSwapFactory = "quickswap_factory"
-    QuickSwapRouter = "quickswap_router"
+    QuickSwapFactory = "quickswap_v3_factory"
+    QuickSwapRouter = "quickswap_v3_router"
+    QuickSwapPool = "quickswap_v3_pool"
 
     USDC = "usdc"
     USDT = "usdt"
